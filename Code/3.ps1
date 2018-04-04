@@ -1,50 +1,37 @@
-##Cross-compiling PowerShell core for Raspbian (ie doing it the hard way)
+#Creating a headless Pi at first boot with an encrypted PSK
 
-#Build Machine Steps
-#Step 1 - Install PowerShell
+#Enable SSH by creating an empty file in the boot partition called SSH
 
-#Prerequisites: git, curl
-# Import the public repository GPG keys
-curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+Enable-PiSSH -TargetVolume D
 
-# Register the Microsoft Ubuntu repository
-curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list | sudo tee /etc/apt/sources.list.d/microsoft.list
+#Enable Wifi by creating an appropriately
+#configured wpa_supplicant.conf file in the boot partition
 
-# Update the list of products
-sudo apt-get update
+Enable-PiWifi -TargetVolume D -WifiCredential (Get-Credential)
 
-# Install PowerShell
-sudo apt-get install -y powershell
+#Under the hood
 
-# Clone PowerShell
-git clone --recursive https://github.com/PowerShell/PowerShell
+#PSK Encryption in .NET:
+$Salt = [System.Text.Encoding]::ASCII.GetBytes("RaspberryPifi")
+$rfc = [System.Security.Cryptography.Rfc2898DeriveBytes]::New("HotDogs99",$Salt,4096)
+Write-Output (Convert-ByteArrayToHexString -ByteArray $rfc.GetBytes(32) -Delimiter "").ToLower()
 
-#Build
-cd ./PowerShell
-pwsh
-Import-Module ./build.psm1
-Start-PSBootstrap -BuildLinuxArm
-Start-PSBuild -Clean -Runtime linux-arm -PSModuleRestore
+#PSK Encrpytion in linux:
+wpa_passphrase RaspberryPifi
 
-#Copy to pi
-scp -r "$(split-path (Get-PSOutput))/*" pi@yourPi:/home/pi/powershell
 
-#Pi Steps
-# Install prerequisites
-sudo apt-get install libunwind8
+#File Contents:
+$Output = @"
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=$CountryCode
 
-# Run PowerShell
+network={
+    ssid="$SSID"
+    psk=$PSK
+    key_mgmt=$KeyMgmt
+}
+"@
 
-##Install PowerShell the Microsoft Approved way
-
-# Install prerequisites
-sudo apt-get install libunwind8
-
-# Grab the latest tar.gz
-wget https://github.com/PowerShell/PowerShell/releases/download/v6.0.2/powershell-6.0.2-linux-arm32.tar.gz
-
-# Make folder to put powershell
-mkdir ~/powershell
-
-# Unpack the tar.gz file
-tar -xvf ./powershell-6.0.0-rc.2-linux-arm32.tar.gz -C ~/powershell
+#Export to ascii format with linux line endings
+$Output.Replace("`r`n","`n") | Out-File "$TargetVolume\wpa_supplicant.conf" -Encoding ascii
