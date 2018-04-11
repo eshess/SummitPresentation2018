@@ -2,7 +2,7 @@
 
 #On the Raspberry Pi
 Install-Module PoshberryPi
-Start-PiServer
+Start-PiServer -Verbose
 
 #The code
 
@@ -49,7 +49,7 @@ While ($Active) {
 
 #On your PC
 
-Invoke-PiCommand -Computername "192.168.1.1" -Command "Write-Output 'Hello World'"
+Invoke-PiCommand -Computername "192.168.43.219" -Command "Write-Output 'Hello World'"
 
 #The code
 
@@ -88,3 +88,9 @@ While ($Waiting) {
 Write-Output $returnedData
 If ($ServerStream) {$ServerStream.Dispose()}
 If ($TcpClient) {$TcpClient.Dispose()}
+
+
+$Output = Invoke-PiCommand -Computername "192.168.43.219" -Command "Get-Process pwsh"
+
+
+Invoke-PiCommand -Computername "192.168.43.219" -Command "exit"

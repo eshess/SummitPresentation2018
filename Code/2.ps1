@@ -1,18 +1,17 @@
 #Imaging an SD card using (im)pure PowerShell
 
-#Introducing PoshberryPi 0.0.2 on PowerShellGallery
+#Introducing PoshberryPi on PowerShellGallery
 Install-Module PoshberryPi
 Import-Module PoshberryPi
-
-Get-Command -Module PoshberryPi
 
 Write-PiImage -TargetVolume D -FileName "C:\RaspberryPi\2018-03-13-raspbian-stretch-lite.img"
 
 
-#Under the hood
-
+#Native class load
 try { [Posh.DiskWriter.Win32DiskAccess] | Out-Null } 
 catch { Add-Type -Path "$PSScriptRoot\classes\Win32DiskAccess.cs" }
+
+#Variable initialization and file validation
 $Completed = $false
 $dtStart = (Get-Date)
 if((Test-Path $FileName) -eq $false)
@@ -45,6 +44,7 @@ if($DiskAccess) {
 }
 
 #if($physicalHandle)
+#Initialize buffers, streams, and readers
 [console]::TreatControlCAsInput = $true
 $maxBufferSize = 1048576
 $buffer = [System.Array]::CreateInstance([Byte],$maxBufferSize)
@@ -53,6 +53,8 @@ $fileLength = ([System.Io.FileInfo]::new($fileName)).Length
 $basefs = [System.Io.FileStream]::new($fileName, [System.Io.FileMode]::Open,[System.Io.FileAccess]::Read)
 $bufferOffset = 0;
 $BinanaryReader = [System.IO.BinaryReader]::new($basefs)
+
+
 while ($offset -lt $fileLength -and !$IsCancelling)
 {
     #Check for Ctrl-C and break if found
@@ -64,6 +66,7 @@ while ($offset -lt $fileLength -and !$IsCancelling)
         }
     }
 
+    #Fill buffer from file bytes
     [int]$readBytes = 0
     do
     {
@@ -113,11 +116,15 @@ while ($offset -lt $fileLength -and !$IsCancelling)
     }
     $offset += $wroteBytes;
 
+    #Progress report
     $percentDone = [int](100 * $offset / $fileLength);
     $tsElapsed = (Get-Date) - $dtStart
     $bytesPerSec = $offset / $tsElapsed.TotalSeconds;
     Write-Progress -Activity "Writing to Disk" -Status "Writing at $bytesPerSec" -PercentComplete $percentDone
 }
+
+
+#Release disk and revery Control C changes
 $DiskAccess.Close()
 $DiskAccess.UnlockDrive()
 if(-not $IsCancelling) {
