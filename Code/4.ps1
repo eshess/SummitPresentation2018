@@ -49,7 +49,7 @@ While ($Active) {
 
 #On your PC
 
-Invoke-PiCommand -Computername "192.168.43.219" -Command "Write-Output 'Hello World'"
+Invoke-PiCommand -Computername "192.168.43.208" -Command "Write-Output 'Hello World'"
 
 #The code
 
@@ -90,7 +90,10 @@ If ($ServerStream) {$ServerStream.Dispose()}
 If ($TcpClient) {$TcpClient.Dispose()}
 
 
-$Output = Invoke-PiCommand -Computername "192.168.43.219" -Command "Get-Process pwsh"
+$Output = Invoke-PiCommand -Computername "192.168.43.208" -Command "Get-Process pwsh"
 
+$OutputNative = Invoke-PiCommand -Computername "192.168.43.208" -Command "ls"
 
-Invoke-PiCommand -Computername "192.168.43.219" -Command "exit"
+$OutputObject = Invoke-PiCommand -Computername "192.168.43.208" -Command "Get-ChildItem"
+
+Invoke-PiCommand -Computername "192.168.43.208" -Command "exit"
